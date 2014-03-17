@@ -26,4 +26,4 @@ Stack frame at 0xbffff730:
  Saved registers:
   ebp at 0xbffff728, eip at 0xbffff72c
 
-By subtracting ebp and the starting address of buf, I find that buf is 64 bytes. I have my script first print the 45 bytes of shell code, then I print 3 meaningless bytes to word align it, and then I print 16 bytes of the starting address of buf, so 4 repetitions. I overwrite the least signficant byte of the return address so that it points to the row of addressses I input into buf. Those addresses will then point to the start of buf, where my shell code is.
+By subtracting the ebp address and the starting address of buf, I find that buf is 64 bytes. I have my script first print the 45 bytes of shell code, then I print 3 meaningless bytes to word align, and then I print 16 bytes of the starting address of buf, so 4 repetitions of the starting address. I overwrite the least signficant byte of the return address so that it points to the row of addressses I input into buf. Those addresses will then point to the start of buf, where my shell code is.
