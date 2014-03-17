@@ -1,0 +1,37 @@
+The vulnerability in q2 is a buffer overflow vulnerability caused by using gets. The gets function does not check the size of what it gets from stdin before copying it into door. By overflowing the door buffer, I could exploit the vulnerability to spawn a shell by overwriting the return address to point to some malicious code. First, I checked the size of the door buffer by using gdb:
+
+Starting program: /home/vsftpd/dejavu 
+
+Breakpoint 1, main () at dejavu.c:12
+12	     deja_vu();
+(gdb) s 
+deja_vu () at dejavu.c:7
+7	  gets(door);
+(gdb) i f 0
+Stack frame at 0xbfbc6ab0:
+ eip = 0x8048412 in deja_vu (dejavu.c:7); saved eip 0x804842a
+ called by frame at 0xbfbc6ac0
+ source language c.
+ Arglist at 0xbfbc6aa8, args: 
+ Locals at 0xbfbc6aa8, Previous frame's sp is 0xbfbc6ab0
+ Saved registers:
+  ebp at 0xbfbc6aa8, eip at 0xbfbc6aac
+(gdb) x/64 door
+0xbfbc6a98:	-1078170788	-1218276827	-1216646544	0
+0xbfbc6aa8:	-1078170952	134513706	134513728	0
+0xbfbc6ab8:	0		-1218382637	1		-1078170796
+0xbfbc6ac8:	-1078170788	-1216714664	0		-1078170852
+0xbfbc6ad8:	-1078170788	0		134513180	-1216757760
+0xbfbc6ae8:	0		0		0		-744476052
+0xbfbc6af8:	1788647037	0		0		0
+0xbfbc6b08:	1		134513440	0		-1216624992
+0xbfbc6b18:	-1218382871	-1216573440	1		134513440
+0xbfbc6b28:	0		134513473	134513695	1
+0xbfbc6b38:	-1078170796	134513728	134513840	-1216646544
+0xbfbc6b48:	-1078170804	-1216571080	1		-1078163214
+0xbfbc6b58:	0		-1078163194	-1078161461	-1078161449
+0xbfbc6b68:	0		32		-1216711660	33
+0xbfbc6b78:	-1216712704	16		126614527	6
+0xbfbc6b88:	4096		17		100		3
+
+By subtracting the address of eip and the first memory address used by door, I could find the size of the door buffer. In this case, door came out to be 20 bytes. This raised an issue because the shell code I want to run is 45 bytes, and so cannot fit into door. Because of this issue, I instead filled door with 20 bytes of junk, then placed my shell code after the return address. Because my shell code lives right after my return address, I overwrote the return address with the address the return address is located at plus 4 bytes.

@@ -1,0 +1,18 @@
+The vulnerability in q1 was a backdoor in the ftp service running on the VM. The vulnerability could be exploited by typing in ":)" as part of login information. Doing so spawns a shell for user vsftpd. From that shell, calling "cat" on the WELCOME file reveals vsftpd's login information. My solution to this problem is as follows:
+
+1. Run Nmap on the IP address of the VM (192.168.56.101) to discover what services are running. The output of Nmap is provided below:
+
+Starting Nmap 6.40-2 ( http://nmap.org ) at 2014-03-16 16:10 PDT
+Nmap scan report for 192.168.56.101
+Host is up (0.0069s latency).
+Not shown: 995 closed ports
+PORT     STATE SERVICE
+21/tcp   open  ftp
+22/tcp   open  ssh
+80/tcp   open  http
+3128/tcp open  squid-http
+8080/tcp open  http-proxy
+
+2. Run netcat on the ports to look for vulnerabilities. Running "nc 192.168.56.101 21" revealed the ":)" vulnerability in the ftp service. 
+
+3. Run Neo's exploit script, using "username:)" as the username and "password" as the password. Also set backdoor port to 6200.

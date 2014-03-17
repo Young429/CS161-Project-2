@@ -1,0 +1,29 @@
+The vulnerability in q4 is in the "invoke" function. The buf array in invoke has only room for 64 bytes, but there is a fencepost error in flip, causing 65 bytes to be written into buf, so again it's a buffer overflow vulnerability. An attacker could overwrite the least significant byte of the return address, and in this way cause his own malicious code to be run. For this question, first I found out what address the return address is saved at as well as the address of the beginning of buf using gdb.
+
+Starting program: /home/brown/agent-brown arg
+
+Breakpoint 1, main (argc=2, argv=0xbffff804) at agent-brown.c:30
+30	     if (argc != 2)
+(gdb) s
+33      dispatch(argv[1]);
+(gdb) s
+dispatch (in=0xbffff8ff "arg") at agent-brown.c:25
+25	   invoke(in);
+(gdb) s
+
+Breakpoint 2, invoke (in=0xbffff8ff "arg") at agent-brown.c:19
+19	     flip(buf, in);
+(gdb) p/x &buf
+$1 = 0xbffff6e8
+ 
+(gdb) i f 0
+Stack frame at 0xbffff730:
+ eip = 0x804841d in invoke (agent-brown.c:19); saved eip 0x804844d
+ called by frame at 0xbffff740
+ source language c.
+ Arglist at 0xbffff728, args: in=0xbffff8ff "arg"
+ Locals at 0xbffff728, Previous frame's sp is 0xbffff730
+ Saved registers:
+  ebp at 0xbffff728, eip at 0xbffff72c
+
+By subtracting ebp and the starting address of buf, I find that buf is 64 bytes. I have my script first print the 45 bytes of shell code, then I print 3 meaningless bytes to word align it, and then I print 16 bytes of the starting address of buf, so 4 repetitions. I overwrite the least signficant byte of the return address so that it points to the row of addressses I input into buf. Those addresses will then point to the start of buf, where my shell code is.
